@@ -37,8 +37,8 @@ export function parseColors(raw: string): ColorVariant[] {
       const m = left.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
       const url = right.match(URL_RE)?.[0] ?? null;
       return {
-        name: (m ? m[1] : left).trim(),
-        code: m ? m[2].trim() : "",
+        name: (m ? (m[1] ?? "") : left).trim(),
+        code: m ? (m[2] ?? "").trim() : "",
         imageUrl: url,
       };
     })
@@ -51,14 +51,15 @@ function extractItems(segment: string): RelatedItem[] {
   let m: RegExpExecArray | null;
   const seen = new Set<string>();
   while ((m = re.exec(segment)) !== null) {
-    let name = tidy(m[1]);
+    const url = m[2] ?? "";
+    let name = tidy(m[1] ?? "");
     // keep only the trailing capitalised product reference, e.g. "юбкой Fumaiolo 3417"
     const capMatch = name.match(/([A-ZА-ЯЁ][^\s]*(?:\s+[A-ZА-ЯЁ][^\s]*)*(?:\s+[\d\s]+)?)\s*$/);
-    if (capMatch) name = capMatch[1].trim();
+    if (capMatch) name = (capMatch[1] ?? "").trim();
     name = name.replace(/\s{2,}/g, " ").trim();
-    if (!name || seen.has(m[2])) continue;
-    seen.add(m[2]);
-    items.push({ name, imageUrl: m[2] });
+    if (!name || !url || seen.has(url)) continue;
+    seen.add(url);
+    items.push({ name, imageUrl: url });
   }
   return items;
 }
@@ -82,9 +83,10 @@ export function parseStylingText(rawText: string): LookBlock[] {
         text = clean.slice(idx + 1).trim();
       } else {
         const lm = clean.match(/^((?:Total\s+Look|Look|Vetrina|Витрина)[^\s.]*\s*[^\s.]*)/i);
-        if (lm) {
-          title = lm[1].trim();
-          text = clean.slice(lm[1].length).trim();
+        const lead = lm?.[1] ?? "";
+        if (lead) {
+          title = lead.trim();
+          text = clean.slice(lead.length).trim();
         }
       }
       return { title, text, items };
@@ -109,7 +111,7 @@ export function parseObjections(raw: string): Objection[] {
     .map((chunk) => {
       const m = chunk.match(/^\s*\[?([\s\S]*?)\]?\s*(?:->|→)\s*([\s\S]*)$/);
       if (!m) return { question: stripUrls(chunk), answer: "" };
-      return { question: stripUrls(m[1]), answer: stripUrls(m[2]) };
+      return { question: stripUrls(m[1] ?? ""), answer: stripUrls(m[2] ?? "") };
     })
     .filter((o) => o.question.length > 0);
 }
