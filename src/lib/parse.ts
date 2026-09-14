@@ -19,8 +19,16 @@ function tidy(text: string): string {
 export function stripUrls(raw: string): string {
   return tidy(
     raw
-      .replace(/\((https?:\/\/[^\s)]+)\)/gi, " ")
-      .replace(URL_RE, " "),
+      // parenthesised URLs, tolerating one nested level of parentheses and spaces in filenames
+      .replace(/\(\s*https?:\/\/[^()]*(?:\([^()]*\)[^()]*)*\)/gi, " ")
+      .replace(/\(\s*https?:\/\/[^)]*\)?/gi, " ")
+      .replace(URL_RE, " ")
+      // leftover filename fragments, e.g. "grigio melange.PNG" or ").jpeg)"
+      .replace(/[^\s(]*\.(?:jpe?g|png|webp|gif|avif)\)?/gi, " ")
+      .replace(/URL\s+non\s+disponibile/gi, " ")
+      .replace(/\(\s*[^()]{0,40}?\)\s*(?=[.,;]|$)/g, (m) => (/[A-Za-zА-Яа-яЁё]{3,}/.test(m) ? m : " "))
+      .replace(/\s+\)/g, " ")
+      .replace(/\(\s+/g, "("),
   );
 }
 
