@@ -40,6 +40,9 @@ function tidy(text: string): string {
 export function stripUrls(raw: string): string {
   return tidy(
     raw
+      // word-embed leftovers like `! ({width='0.5in' height='0.7in'}`
+      .replace(/!\s*\(\s*\{[^}]*\}\s*\)?/g, " ")
+      .replace(/\{width=[^}]*\}/g, " ")
       // parenthesised URLs, tolerating one nested level of parentheses and spaces in filenames
       .replace(/\(\s*https?:\/\/[^()]*(?:\([^()]*\)[^()]*)*\)/gi, " ")
       .replace(/\(\s*https?:\/\/[^)]*\)?/gi, " ")
