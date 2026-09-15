@@ -64,7 +64,7 @@ export function parseColors(raw: string): ColorVariant[] {
       const left = idx === -1 ? chunk : chunk.slice(0, idx);
       const right = idx === -1 ? "" : chunk.slice(idx + 1).trim();
       const m = left.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
-      const url = right.match(URL_RE)?.[0] ?? null;
+      const url = normalizeImageUrl(right);
       return {
         name: (m ? (m[1] ?? "") : left).trim(),
         code: m ? (m[2] ?? "").trim() : "",
