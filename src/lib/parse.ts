@@ -4,6 +4,27 @@ export type LookBlock = { title: string | null; text: string; items: RelatedItem
 export type Objection = { question: string; answer: string };
 
 const URL_RE = /https?:\/\/[^\s)]+/gi;
+const IMG_EXT_RE = /\.(?:jpe?g|png|webp|gif|avif)/i;
+
+/**
+ * Image links in the source data may contain spaces and parentheses
+ * (e.g. ".../fondazione nero.PNG" or ".../IALOFANE_10100 (1).jpg").
+ * Cut the candidate at its first image extension and percent-encode spaces.
+ */
+function normalizeImageUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const start = raw.search(/https?:\/\//i);
+  if (start === -1) return null;
+  let url = raw.slice(start).trim();
+  const ext = url.match(IMG_EXT_RE);
+  if (ext && ext.index !== undefined) {
+    url = url.slice(0, ext.index + ext[0].length);
+  } else {
+    url = (url.split(/\s/)[0] ?? "").replace(/[),.;]+$/, "");
+  }
+  if (!url) return null;
+  return url.replace(/\s/g, "%20");
+}
 
 function tidy(text: string): string {
   return text
@@ -43,7 +64,7 @@ export function parseColors(raw: string): ColorVariant[] {
       const left = idx === -1 ? chunk : chunk.slice(0, idx);
       const right = idx === -1 ? "" : chunk.slice(idx + 1).trim();
       const m = left.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
-      const url = right.match(URL_RE)?.[0] ?? null;
+      const url = normalizeImageUrl(right);
       return {
         name: (m ? (m[1] ?? "") : left).trim(),
         code: m ? (m[2] ?? "").trim() : "",
@@ -55,11 +76,12 @@ export function parseColors(raw: string): ColorVariant[] {
 
 function extractItems(segment: string): RelatedItem[] {
   const items: RelatedItem[] = [];
-  const re = /([^,;:.|()]{2,60}?)\s*\((https?:\/\/[^\s)]+)\)/g;
+  const re =
+    /([^,;:.|()]{2,60}?)\s*\((https?:\/\/[^|]*?\.(?:jpe?g|png|webp|gif|avif)|https?:\/\/[^\s)]+)/gi;
   let m: RegExpExecArray | null;
   const seen = new Set<string>();
   while ((m = re.exec(segment)) !== null) {
-    const url = m[2] ?? "";
+    const url = normalizeImageUrl(m[2]) ?? "";
     let name = tidy(m[1] ?? "");
     // keep only the trailing capitalised product reference, e.g. "юбкой Fumaiolo 3417"
     const capMatch = name.match(/([A-ZА-ЯЁ][^\s]*(?:\s+[A-ZА-ЯЁ][^\s]*)*(?:\s+[\d\s]+)?)\s*$/);

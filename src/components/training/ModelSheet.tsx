@@ -92,7 +92,10 @@ export function ModelSheet({ model }: { model: ModelRow }) {
     [model, lang],
   );
   const category = useMemo(() => inferCategory(model.descEn), [model]);
-  const hero = colors.find((c) => c.imageUrl)?.imageUrl ?? null;
+  const hero =
+    colors.find((c) => c.imageUrl)?.imageUrl ??
+    looks.flatMap((l) => l.items).find((i) => i.imageUrl)?.imageUrl ??
+    null;
   const description = lang === "en" ? model.descEn : model.descRu;
 
   return (
