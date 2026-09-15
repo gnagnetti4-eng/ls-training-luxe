@@ -40,6 +40,10 @@ function tidy(text: string): string {
 export function stripUrls(raw: string): string {
   return tidy(
     raw
+      // word-embed leftovers like `! ({width='0.5in'})` or `![](media/image1.jpg){width=...}`
+      .replace(/!\[[^\]]*\]\([^)]*\)\s*(?:\{[^}]*\})?/g, " ")
+      .replace(/!\s*\(\s*\{[^}]*\}\s*\)?/g, " ")
+      .replace(/\{width=[^}]*\}/g, " ")
       // parenthesised URLs, tolerating one nested level of parentheses and spaces in filenames
       .replace(/\(\s*https?:\/\/[^()]*(?:\([^()]*\)[^()]*)*\)/gi, " ")
       .replace(/\(\s*https?:\/\/[^)]*\)?/gi, " ")
@@ -134,6 +138,55 @@ export function parseSalesTips(raw: string): string[] {
 
 export function parseObjections(raw: string): Objection[] {
   if (!raw) return [];
+  // placeholder cells ("Data not available" / "Данные отсутствуют") carry no content
+  const stripped = raw
+    .replace(/возражени[ея]|стратегия\s+\S+|преодоления|objection|overcoming|strategy/gi, "")
+    .trim();
+  if (stripped.length === 0) return [];
+  if (/^(?:данные\s+отсутствуют|data\s+not\s+available)\b/i.test(stripped) && !/«|->|→/.test(raw)) return [];
+  // Format A: inline "Objection: «...» Response: ..." pairs (possibly several in one cell)
+  if (/objection\s*:/i.test(raw)) {
+    return raw
+      .split(/objection\s*:/i)
+      .map((s) => s.trim())
+      .filter((s) => Boolean(s) && !/objection\s*handling/i.test(s) && !/^\d+\s*[.)]\s*$/.test(s))
+      .map((chunk) => {
+        const m = chunk.match(/^([\s\S]*?)\s*response\s*:\s*([\s\S]*)$/i);
+        if (!m) return { question: stripUrls(chunk), answer: "" };
+        return {
+          question: stripUrls(m[1] ?? "").replace(/^[«"'\s]+|[»"'\s]+$/g, ""),
+          answer: stripUrls(m[2] ?? ""),
+        };
+      })
+      .filter((o) => o.question.length > 0 || o.answer.length > 0);
+  }
+  // Format B: flattened two-column table — questions inside «...», answers in between
+  if (/«[\s\S]+?»/.test(raw)) {
+    const body = raw
+      .replace(/^\s*(?:\d+\s*[.)]\s*)?(?:objection(?:\s+handling)?|возражени[ея])[\s\S]{0,40}?(?=«)/i, "")
+      .replace(/возражение\s+стратегия\s+преодоления/gi, " ");
+    const out: Objection[] = [];
+    const re = /«([\s\S]*?)»\s*([^«]*)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(body)) !== null) {
+      const question = stripUrls(m[1] ?? "").replace(/^[«"'\s]+|[»"'\s]+$/g, "");
+      const answer = stripUrls(m[2] ?? "");
+      if (question || answer) out.push({ question, answer });
+    }
+    // nested «word» quotes inside an answer split it into a stub pair:
+    // when an objection has no answer and the next "question" is a short
+    // quoted phrase, fold it back: answer = «phrase» + its text
+    for (let i = out.length - 1; i >= 0; i--) {
+      const cur = out[i]!;
+      const next = out[i + 1];
+      if (cur.question && !cur.answer && next && next.question.split(/\s+/).length <= 4) {
+        cur.answer = tidy(`«${next.question}» ${next.answer}`);
+        out.splice(i + 1, 1);
+      }
+    }
+    if (out.length > 0) return out;
+  }
+  // Format C: "question -> answer" pairs separated by ||
   return raw
     .split(/\|\|/)
     .map((s) => s.trim().replace(/^[,;]\s*/, ""))
