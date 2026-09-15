@@ -153,7 +153,22 @@ export function parseObjections(raw: string): Objection[] {
       })
       .filter((o) => o.question.length > 0 || o.answer.length > 0);
   }
-  // Format B: "question -> answer" pairs separated by ||
+  // Format B: flattened two-column table — questions inside «...», answers in between
+  if (/«[\s\S]+?»/.test(raw)) {
+    const body = raw
+      .replace(/^\s*(?:\d+\s*[.)]\s*)?(?:objection(?:\s+handling)?|возражени[ея])[\s\S]{0,40}?(?=«)/i, "")
+      .replace(/возражение\s+стратегия\s+преодоления/gi, " ");
+    const out: Objection[] = [];
+    const re = /«([\s\S]*?)»\s*([^«]*)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(body)) !== null) {
+      const question = stripUrls(m[1] ?? "").replace(/^[«"'\s]+|[»"'\s]+$/g, "");
+      const answer = stripUrls(m[2] ?? "");
+      if (question || answer) out.push({ question, answer });
+    }
+    if (out.length > 0) return out;
+  }
+  // Format C: "question -> answer" pairs separated by ||
   return raw
     .split(/\|\|/)
     .map((s) => s.trim().replace(/^[,;]\s*/, ""))
