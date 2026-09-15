@@ -40,7 +40,8 @@ function tidy(text: string): string {
 export function stripUrls(raw: string): string {
   return tidy(
     raw
-      // word-embed leftovers like `! ({width='0.5in' height='0.7in'}`
+      // word-embed leftovers like `! ({width='0.5in'})` or `![](media/image1.jpg){width=...}`
+      .replace(/!\[[^\]]*\]\([^)]*\)\s*(?:\{[^}]*\})?/g, " ")
       .replace(/!\s*\(\s*\{[^}]*\}\s*\)?/g, " ")
       .replace(/\{width=[^}]*\}/g, " ")
       // parenthesised URLs, tolerating one nested level of parentheses and spaces in filenames
@@ -169,6 +170,12 @@ export function parseObjections(raw: string): Objection[] {
     while ((m = re.exec(body)) !== null) {
       const question = stripUrls(m[1] ?? "").replace(/^[«"'\s]+|[»"'\s]+$/g, "");
       const answer = stripUrls(m[2] ?? "");
+      // nested «word» quotes inside an answer surface as question-only stubs:
+      // fold them back into the previous objection's answer
+      if (question && !answer && out.length > 0) {
+        out[out.length - 1]!.answer = tidy(`${out[out.length - 1]!.answer} «${question}»`);
+        continue;
+      }
       if (question || answer) out.push({ question, answer });
     }
     if (out.length > 0) return out;
