@@ -137,6 +137,8 @@ export function parseSalesTips(raw: string): string[] {
 
 export function parseObjections(raw: string): Objection[] {
   if (!raw) return [];
+  // placeholder cells carry no content
+  if (!/«|->|→|objection\s*:/i.test(raw) || /^\s*(?:возражение\s+стратегия\s+преодоления|objection\s+overcoming\s+strategy)?\s*(?:данные\s+отсутствуют|data\s+not\s+available)[\s\S]*$/i.test(raw.replace(/данные\s+отсутствуют|data\s+not\s+available/gi, "").trim()) === false && /^(?:[\s\S]*?)(?:данные\s+отсутствуют|data\s+not\s+available)(?:[\s\S]*?)$/i.test(raw) && raw.replace(/возражение|стратегия|преодоления|objection|overcoming|strategy|данные\s+отсутствуют|data\s+not\s+available/gi, "").trim().length === 0) return [];
   // Format A: inline "Objection: «...» Response: ..." pairs (possibly several in one cell)
   if (/objection\s*:/i.test(raw)) {
     return raw
