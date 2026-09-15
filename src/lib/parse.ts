@@ -76,11 +76,11 @@ export function parseColors(raw: string): ColorVariant[] {
 
 function extractItems(segment: string): RelatedItem[] {
   const items: RelatedItem[] = [];
-  const re = /([^,;:.|()]{2,60}?)\s*\((https?:\/\/[^\s)]+)\)/g;
+  const re = /([^,;:.|()]{2,60}?)\s*\((https?:\/\/[^)]*(?:\([^)]*\)[^)]*)*)\)/g;
   let m: RegExpExecArray | null;
   const seen = new Set<string>();
   while ((m = re.exec(segment)) !== null) {
-    const url = m[2] ?? "";
+    const url = normalizeImageUrl(m[2]) ?? "";
     let name = tidy(m[1] ?? "");
     // keep only the trailing capitalised product reference, e.g. "юбкой Fumaiolo 3417"
     const capMatch = name.match(/([A-ZА-ЯЁ][^\s]*(?:\s+[A-ZА-ЯЁ][^\s]*)*(?:\s+[\d\s]+)?)\s*$/);
