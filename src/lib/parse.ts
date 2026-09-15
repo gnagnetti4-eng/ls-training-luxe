@@ -171,13 +171,18 @@ export function parseObjections(raw: string): Objection[] {
     while ((m = re.exec(body)) !== null) {
       const question = stripUrls(m[1] ?? "").replace(/^[«"'\s]+|[»"'\s]+$/g, "");
       const answer = stripUrls(m[2] ?? "");
-      // nested «word» quotes inside an answer surface as question-only stubs:
-      // fold them back into the previous objection's answer
-      if (question && !answer && out.length > 0) {
-        out[out.length - 1]!.answer = tidy(`${out[out.length - 1]!.answer} «${question}»`);
-        continue;
-      }
       if (question || answer) out.push({ question, answer });
+    }
+    // nested «word» quotes inside an answer split it into a stub pair:
+    // when an objection has no answer and the next "question" is a short
+    // quoted phrase, fold it back: answer = «phrase» + its text
+    for (let i = out.length - 1; i >= 0; i--) {
+      const cur = out[i]!;
+      const next = out[i + 1];
+      if (cur.question && !cur.answer && next && next.question.split(/\s+/).length <= 4) {
+        cur.answer = tidy(`«${next.question}» ${next.answer}`);
+        out.splice(i + 1, 1);
+      }
     }
     if (out.length > 0) return out;
   }
