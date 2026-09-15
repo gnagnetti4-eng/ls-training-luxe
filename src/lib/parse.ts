@@ -134,6 +134,23 @@ export function parseSalesTips(raw: string): string[] {
 
 export function parseObjections(raw: string): Objection[] {
   if (!raw) return [];
+  // Format A: inline "Objection: «...» Response: ..." pairs (possibly several in one cell)
+  if (/objection\s*:/i.test(raw)) {
+    return raw
+      .split(/objection\s*:/i)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((chunk) => {
+        const m = chunk.match(/^([\s\S]*?)\s*response\s*:\s*([\s\S]*)$/i);
+        if (!m) return { question: stripUrls(chunk), answer: "" };
+        return {
+          question: stripUrls(m[1] ?? "").replace(/^[«"'\s]+|[»"'\s]+$/g, ""),
+          answer: stripUrls(m[2] ?? ""),
+        };
+      })
+      .filter((o) => o.question.length > 0 || o.answer.length > 0);
+  }
+  // Format B: "question -> answer" pairs separated by ||
   return raw
     .split(/\|\|/)
     .map((s) => s.trim().replace(/^[,;]\s*/, ""))
