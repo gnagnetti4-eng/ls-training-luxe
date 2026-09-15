@@ -76,7 +76,8 @@ export function parseColors(raw: string): ColorVariant[] {
 
 function extractItems(segment: string): RelatedItem[] {
   const items: RelatedItem[] = [];
-  const re = /([^,;:.|()]{2,60}?)\s*\((https?:\/\/[^)]*(?:\([^)]*\)[^)]*)*)\)/g;
+  const re =
+    /([^,;:.|()]{2,60}?)\s*\((https?:\/\/[^|]*?\.(?:jpe?g|png|webp|gif|avif)|https?:\/\/[^\s)]+)/g;
   let m: RegExpExecArray | null;
   const seen = new Set<string>();
   while ((m = re.exec(segment)) !== null) {
