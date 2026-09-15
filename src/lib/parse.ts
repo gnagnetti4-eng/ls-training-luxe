@@ -4,6 +4,27 @@ export type LookBlock = { title: string | null; text: string; items: RelatedItem
 export type Objection = { question: string; answer: string };
 
 const URL_RE = /https?:\/\/[^\s)]+/gi;
+const IMG_EXT_RE = /\.(?:jpe?g|png|webp|gif|avif)/i;
+
+/**
+ * Image links in the source data may contain spaces and parentheses
+ * (e.g. ".../fondazione nero.PNG" or ".../IALOFANE_10100 (1).jpg").
+ * Cut the candidate at its first image extension and percent-encode spaces.
+ */
+function normalizeImageUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const start = raw.search(/https?:\/\//i);
+  if (start === -1) return null;
+  let url = raw.slice(start).trim();
+  const ext = url.match(IMG_EXT_RE);
+  if (ext && ext.index !== undefined) {
+    url = url.slice(0, ext.index + ext[0].length);
+  } else {
+    url = (url.split(/\s/)[0] ?? "").replace(/[),.;]+$/, "");
+  }
+  if (!url) return null;
+  return url.replace(/\s/g, "%20");
+}
 
 function tidy(text: string): string {
   return text
