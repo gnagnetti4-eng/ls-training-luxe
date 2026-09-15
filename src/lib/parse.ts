@@ -142,7 +142,7 @@ export function parseObjections(raw: string): Objection[] {
     return raw
       .split(/objection\s*:/i)
       .map((s) => s.trim())
-      .filter(Boolean)
+      .filter((s) => Boolean(s) && !/objection\s*handling/i.test(s) && !/^\d+\s*[.)]\s*$/.test(s))
       .map((chunk) => {
         const m = chunk.match(/^([\s\S]*?)\s*response\s*:\s*([\s\S]*)$/i);
         if (!m) return { question: stripUrls(chunk), answer: "" };
